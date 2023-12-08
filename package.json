@@ -1,0 +1,70 @@
+{
+  "name": "sitemap-generator-webpack-plugin",
+  "private": true,
+  "description": "Webpack plugin to generate a sitemap.",
+  "license": "MIT",
+  "version": "0.0.0",
+  "author": "JangHyeok Kim",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d0orHyeok/sitemap-generator-webpack-plugin.git"
+  },
+  "homepage": "https://github.com/d0orHyeok/sitemap-generator-webpack-plugin",
+  "bugs": "https://github.com/d0orHyeok/sitemap-generator-webpack-plugin",
+  "main": "dist/index.js",
+  "types": "types/index.d.ts",
+  "engines": {
+    "node": ">= 14.15.0"
+  },
+  "keywords": [
+    "webpack",
+    "plugin",
+    "sitemap",
+    "webpack-plugin",
+    "sitemap-generator-webpack-plugin"
+  ],
+  "scripts": {
+    "start": "npm run build",
+    "clean": "node scripts/clean.js",
+    "prebuild": "npm run clean",
+    "build": "npm-run-all -p \"build:**\"",
+    "build:types": "tsc --declaration --emitDeclarationOnly --outDir types --rootDir src && prettier \"types/**/*.ts\" --write",
+    "build:code": "cross-env NODE_ENV=production babel src -d dist --copy-files",
+    "pub": "node scripts/setupPublish.js && cd publish && npm publish",
+    "examples": "node scripts/examples.js",
+    "lint:prettier": "prettier --list-different .",
+    "lint:js": "eslint --cache .",
+    "lint:types": "tsc --pretty --noEmit",
+    "lint": "npm-run-all -l -p \"lint:**\""
+  },
+  "lint-staged": {
+    "src/**/*.{js,ts}": "eslint --fix"
+  },
+  "peerDependencies": {
+    "webpack": "^5.1.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.23.4",
+    "@babel/core": "^7.23.5",
+    "@babel/eslint-parser": "^7.23.3",
+    "@babel/preset-env": "^7.23.5",
+    "@types/node": "^20.10.4",
+    "clean-webpack-plugin": "^4.0.0",
+    "cross-env": "^7.0.3",
+    "eslint": "^8.55.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.0",
+    "eslint-plugin-prettier": "^5.0.1",
+    "html-webpack-plugin": "^5.5.4",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^3.1.0",
+    "typescript": "^5.3.3",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4"
+  },
+  "dependencies": {
+    "schema-utils": "^4.2.0"
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "definitions": {
+    "SitemapURL": {
+      "type": "object",
+      "properties": {
+        "loc": {
+          "type": "string",
+          "description": "URL of the page (e.g. some/link). Sum of this value and baseURL must be less than 2,048 characters."
+        },
+        "lastmod": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The date of last modification of the page (e.g. 2023-12-08). This date should be in W3C Datetime format. This format allows you to omit the time portion, if desired, and use YYYY-MM-DD."
+        },
+        "priority": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "The priority of this URL relative to other URLs on your site. Valid values range from 0.0 to 1.0."
+        },
+        "changefreq": {
+          "type": "string",
+          "minLength": 1,
+          "description": "How frequently the page is likely to change."
+        }
+      }
+    },
+    "Emitted": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "callback": {
+          "instanceof": "Function",
+          "tsType": "((location: string) => string | ({loc: string; lastmod?: string; priority?: number; changefreq?: string}))"
+        },
+        "ext": {
+          "anyOf": [
+            { "type": "string" },
+            { "instanceof": "Function", "tsType": "(asset: string) => boolean" }
+          ],
+          "description": "Specific file extensions to use the asset (e.g. .html), This can be string or you can provide function to filtering asset"
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "baseURL": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Root URL of your site (e.g. https://your.site)"
+    },
+    "urls": {
+      "type": "array",
+      "items": {
+        "anyOf": [{ "type": "string" }, { "$ref": "#/definitions/SitemapURL" }]
+      },
+      "description": "Optional array of locations on your site. These can be strings or you can provide object to customize each url."
+    },
+    "emitted": {
+      "anyOf": [{ "type": "boolean" }, { "$ref": "#/definitions/Emitted" }],
+      "description": "Optional object to customize each url by webpack emitted assets"
+    },
+    "options": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the sitemap file emitted to your build output"
+        },
+        "lastmod": {
+          "anyOf": [{ "type": "string" }, { "type": "boolean" }],
+          "description": "The date for <lastmod> on all urls. Can be overridden by url-specific lastmod config. If value is true, the current date will be used for all urls."
+        },
+        "priority": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "A <priority> to be set globally on all locations. Can be overridden by url-specific priorty config."
+        },
+        "changefreq": {
+          "anyOf": [{ "type": "string" }, { "type": "boolean" }],
+          "description": "A <changefreq> to be set globally on all locations. Can be overridden by url-specific changefreq config."
+        }
+      },
+      "description": "Optional object of configuration settings."
+    }
+  }
+}
