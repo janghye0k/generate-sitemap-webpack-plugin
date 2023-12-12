@@ -12,6 +12,7 @@ dist
 dist-ssr
 /publish
 *.local
+.eslintcache
 
 # Editor directories and files
 .vscode/*
