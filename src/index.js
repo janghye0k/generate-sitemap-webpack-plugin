@@ -82,7 +82,7 @@ class SitemapPlugin {
     const opts = { ...defaultConfig };
     Object.keys(opts).forEach((key) => {
       // @ts-ignore
-      opts[key] = Object.assign(opts[key], options[key] || {});
+      opts[key] = Object.assign(opts[key], (options || {})[key] || {});
     });
     opts.baseURL = options?.baseURL;
 
