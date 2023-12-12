@@ -8,7 +8,11 @@
     "useUnknownInCatchVariables": false,
     "types": ["node"],
     "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "outDir": "types",
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": "src"
   },
-  "include": ["./src/**/*"]
+  "include": ["./src/**/*.js"]
 }

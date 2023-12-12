@@ -63,9 +63,9 @@ type EmittedCallback = (location: string) => string | SitemapURL;
 type Emitted = {
   callback: EmittedCallback;
   /**
-   * Specific file extensions to use the asset (e.g. .html), This can be string or you can provide function to filtering asset
+   * Specific pattern to filter the asset (e.g. .html), This can be string (glob pattern) or you can provide function instead of string pattern
    */
-  ext?: string | ((asset: string) => boolean) | undefined;
+  pattern?: string | ((asset: string) => boolean) | undefined;
 };
 type AdditionalOptions = {
   /**
