@@ -3,6 +3,7 @@ const fs = require('fs');
 const schema = require('./options.json');
 const { escape } = require('./utils');
 const { validate } = require('schema-utils');
+const { minimatch } = require('minimatch');
 
 /** @typedef {import("schema-utils/declarations/validate").Schema} Schema */
 /** @typedef {import("webpack").Compiler} Compiler */
@@ -28,7 +29,7 @@ const { validate } = require('schema-utils');
 /**
  * @typedef {Object} Emitted
  * @property {EmittedCallback} callback
- * @property {string | ((asset: string) => boolean)} [ext] Specific file extensions to use the asset (e.g. .html), This can be string or you can provide function to filtering asset
+ * @property {string | ((asset: string) => boolean)} [pattern] Specific pattern to filter the asset (e.g. .html), This can be string (glob pattern) or you can provide function instead of string pattern
  */
 
 /**
@@ -47,14 +48,14 @@ const { validate } = require('schema-utils');
  * @property {AdditionalOptions} [options] Optional object of configuration settings.
  */
 
-const DEFAULT_ASSET_EXT = '.html';
+const DEFAULT_PATTERN = '**/*.html';
 const DEFAULT_NAME = 'sitemap.xml';
 const PLUGIN = 'GenerateSitemapWebpackPlugin';
 
 const defaultConfig = {
   urls: [],
-  /** @type {{callback: EmittedCallback; ext: string}} */
-  emitted: { callback: (location) => location, ext: DEFAULT_ASSET_EXT },
+  /** @type {{callback: EmittedCallback; pattern: string}} */
+  emitted: { callback: (location) => location, pattern: DEFAULT_PATTERN },
   options: {
     filename: DEFAULT_NAME,
   },
@@ -141,10 +142,11 @@ class SitemapPlugin {
         const emittedParam = emitted === true ? defaultConfig.emitted : emitted;
         compilation.emittedAssets.forEach((assetName) => {
           const callback = emittedParam.callback;
-          const ext = emittedParam.ext || DEFAULT_ASSET_EXT;
-          if (typeof ext === 'string') {
-            if (!assetName.endsWith(ext)) return;
-          } else if (!ext(assetName)) return;
+          const pattern = emittedParam.pattern || DEFAULT_PATTERN;
+
+          if (typeof pattern === 'string') {
+            if (!minimatch(assetName, pattern, { matchBase: true })) return;
+          } else if (!pattern(assetName)) return;
           const location = base + assetName;
           const result = callback(location);
           const url = typeof result === 'string' ? { loc: result } : result;

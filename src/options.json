@@ -33,12 +33,13 @@
           "instanceof": "Function",
           "tsType": "((location: string) => string | ({loc: string; lastmod?: string; priority?: number; changefreq?: string}))"
         },
-        "ext": {
+        "pattern": {
           "anyOf": [
             { "type": "string" },
             { "instanceof": "Function", "tsType": "(asset: string) => boolean" }
           ],
-          "description": "Specific file extensions to use the asset (e.g. .html), This can be string or you can provide function to filtering asset"
+          "default": "**/*.html",
+          "description": "Specific pattern to filter the asset (e.g. .html), This can be string (glob pattern) or you can provide function instead of string pattern"
         }
       }
     }

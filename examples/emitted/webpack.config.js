@@ -35,7 +35,7 @@ module.exports = {
           priority: loc.includes('index') ? 1 : 0.5,
           changefreq: 'yearly',
         }),
-        ext: (asset) => asset.endsWith('.html') || asset.endsWith('.ejs'),
+        pattern: `**/*.{html,ejs}`,
       },
     }),
     new CleanWebpackPlugin(),

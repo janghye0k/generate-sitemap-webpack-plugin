@@ -35,7 +35,7 @@ module.exports = {
           priority: loc.includes('index') ? 1 : undefined,
           changefreq: 'yearly',
         }),
-        ext: (asset) => asset.endsWith('.html') || asset.endsWith('.ejs'),
+        pattern: `**/*.{html,ejs}`,
       },
       urls: [
         'first',
