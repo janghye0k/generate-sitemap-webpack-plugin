@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.1](https://github.com/d0orHyeok/sitemap-generator-webpack-plugin/compare/v0.1.0...v0.1.1) (2023-12-13)
+
+### Bug Fixes
+
+- options.baseURL validation error ([24a4634](https://github.com/d0orHyeok/sitemap-generator-webpack-plugin/commit/24a46341b2c5a34657622c12a120b1148bccd840))
+
 ## [0.1.0](https://github.com/d0orHyeok/sitemap-generator-webpack-plugin/compare/v0.0.0...v0.1.0) (2023-12-12)
 
 ### ⚠ BREAKING CHANGES

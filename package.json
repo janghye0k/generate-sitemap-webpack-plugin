@@ -2,7 +2,7 @@
   "name": "sitemap-generator-webpack-plugin",
   "description": "Webpack plugin to generate a sitemap.",
   "license": "MIT",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "JangHyeok Kim",
   "repository": {
     "type": "git",
