@@ -51,6 +51,40 @@ const { minimatch } = require('minimatch');
 const DEFAULT_PATTERN = '**/*.html';
 const DEFAULT_NAME = 'sitemap.xml';
 const PLUGIN = 'GenerateSitemapWebpackPlugin';
+const URL_ORDER_MAP = {
+  loc: -1,
+  lastmod: 1,
+  priority: 2,
+  changefreq: 3,
+};
+/** @type {Record<string, { validate: (value: any) => boolean; schema: object }>} */
+const URL_VALIDATION_MAP = {
+  loc: {
+    validate: (value) => typeof value === 'string',
+    schema: schema.definitions.SitemapURL.properties.loc,
+  },
+  lastmod: {
+    validate: () => true,
+    schema: schema.definitions.SitemapURL.properties.lastmod,
+  },
+  priority: {
+    validate: (value) => 0 <= value && value <= 1,
+    schema: schema.definitions.SitemapURL.properties.priority,
+  },
+  changefreq: {
+    validate: (value) =>
+      [
+        'always',
+        'hourly',
+        'daily',
+        'weekly',
+        'monthly',
+        'yearly',
+        'never',
+      ].includes(value),
+    schema: schema.definitions.SitemapURL.properties.changefreq,
+  },
+};
 
 const defaultConfig = {
   urls: [],
@@ -150,7 +184,22 @@ class SitemapPlugin {
           const location = base + assetName;
           const result = callback(location);
           const url = typeof result === 'string' ? { loc: result } : result;
-          const sitemapURL = Object.assign({}, commonURLOptions, url);
+          const sitemapURL = Object.entries(
+            Object.assign({}, commonURLOptions, url)
+          ) //@ts-ignore
+            .sort((a, b) => URL_ORDER_MAP[a[0]] - URL_ORDER_MAP[b[0]])
+            .reduce((obj, [k, v]) => {
+              const item = URL_VALIDATION_MAP[k];
+              if (!item.validate(v))
+                throw new Error(`
+                Invalid options.emitted.callback\n
+                this callback's returnValue.${k} should be follow below description\n\n
+                ${Object.entries(item.schema)
+                  .map(([key, desc]) => `${key}: ${desc}`)
+                  .join('\n')}
+              `);
+              return { ...obj, [k]: v };
+            }, /** @type {any} */ ({}));
           sitemapURLs.push(sitemapURL);
         });
       }

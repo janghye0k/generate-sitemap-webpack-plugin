@@ -2,6 +2,7 @@
   "definitions": {
     "SitemapURL": {
       "type": "object",
+      "required": ["loc"],
       "properties": {
         "loc": {
           "type": "string",
@@ -19,15 +20,14 @@
           "description": "The priority of this URL relative to other URLs on your site. Valid values range from 0.0 to 1.0."
         },
         "changefreq": {
-          "type": "string",
-          "minLength": 1,
+          "$ref": "#/definitions/Changefreq",
           "description": "How frequently the page is likely to change."
         }
       }
     },
     "Emitted": {
       "type": "object",
-      "additionalProperties": false,
+      "required": ["callback"],
       "properties": {
         "callback": {
           "instanceof": "Function",
@@ -42,6 +42,18 @@
           "description": "Specific pattern to filter the asset (e.g. .html), This can be string (glob pattern) or you can provide function instead of string pattern"
         }
       }
+    },
+    "Changefreq": {
+      "type": "string",
+      "enum": [
+        "always",
+        "hourly",
+        "daily",
+        "weekly",
+        "monthly",
+        "yearly",
+        "never"
+      ]
     }
   },
   "type": "object",
@@ -82,7 +94,10 @@
           "description": "A <priority> to be set globally on all locations. Can be overridden by url-specific priorty config."
         },
         "changefreq": {
-          "anyOf": [{ "type": "string" }, { "type": "boolean" }],
+          "anyOf": [
+            { "$ref": "#/definitions/Changefreq" },
+            { "type": "boolean" }
+          ],
           "description": "A <changefreq> to be set globally on all locations. Can be overridden by url-specific changefreq config."
         }
       },
