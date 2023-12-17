@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  fast-xml-parser:
+    specifier: ^4.3.2
+    version: 4.3.2
   minimatch:
     specifier: ^9.0.3
     version: 9.0.3
@@ -5254,6 +5257,16 @@ packages:
       }
     dev: true
 
+  /fast-xml-parser@4.3.2:
+    resolution:
+      {
+        integrity: sha512-rmrXUXwbJedoXkStenj1kkljNF7ugn5ZjR9FJcwmCfcCbtOMDghPajbc+Tck6vE6F5XsDmx+Pr2le9fw8+pXBg==,
+      }
+    hasBin: true
+    dependencies:
+      strnum: 1.0.5
+    dev: false
+
   /fastest-levenshtein@1.0.16:
     resolution:
       {
@@ -9457,6 +9470,13 @@ packages:
       }
     engines: { node: '>=8' }
     dev: true
+
+  /strnum@1.0.5:
+    resolution:
+      {
+        integrity: sha512-J8bbNyKKXl5qYcR36TIO8W3mVGVHrmmxsd5PAItGkmyzwJvybiw2IVq5nqd0i4LSNSkB/sx9VHllbfFdr9k1JA==,
+      }
+    dev: false
 
   /supports-color@5.5.0:
     resolution:

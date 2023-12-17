@@ -1,9 +1,9 @@
 const path = require('path');
 const fs = require('fs');
 const schema = require('./options.json');
-const { escape } = require('./utils');
 const { validate } = require('schema-utils');
 const { minimatch } = require('minimatch');
+const { XMLBuilder } = require('fast-xml-parser');
 
 /** @typedef {import("schema-utils/declarations/validate").Schema} Schema */
 /** @typedef {import("webpack").Compiler} Compiler */
@@ -126,31 +126,19 @@ class SitemapPlugin {
 
   /**
    * @private
-   * @param {SitemapURL[]} urls
+   * @param {SitemapURL[]} sitemapURLs
    * @returns {string}
    */
-  createXMLSitemap(urls = []) {
-    const xmlUrls = urls
-      .map((url) => {
-        /** @type {Record<string, string>} */
-        const items = {};
-        Object.entries(url).forEach(([tagName, value]) => {
-          const item =
-            value !== undefined && value !== null
-              ? `\n\t\t<${tagName}>${escape(`${value}`)}</${tagName}>`
-              : '';
-          items[tagName] = item;
-        });
-        const {
-          loc = '',
-          lastmod = '',
-          changefreq = '',
-          priority = '',
-        } = items;
-        return `\t<url>${loc + lastmod + changefreq + priority}\n\t</url>`;
-      })
-      .join('\n');
-    return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${xmlUrls}\n</urlset>`;
+  createXMLSitemap(sitemapURLs = []) {
+    const xmlObject = {
+      urlset: {
+        '@_xmlns': 'http://www.sitemaps.org/schemas/sitemap/0.9',
+        url: sitemapURLs,
+      },
+    };
+
+    const builder = new XMLBuilder({ ignoreAttributes: false, format: true });
+    return `<?xml version="1" encoding="UTF-8"?>\n` + builder.build(xmlObject);
   }
 
   /** @param {Compiler} compiler */
