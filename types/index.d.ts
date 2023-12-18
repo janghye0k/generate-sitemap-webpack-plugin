@@ -12,7 +12,7 @@ declare class SitemapPlugin {
   private options;
   /**
    * @private
-   * @param {SitemapURL[]} urls
+   * @param {SitemapURL[]} sitemapURLs
    * @returns {string}
    */
   private createXMLSitemap;
@@ -25,6 +25,7 @@ declare namespace SitemapPlugin {
     Compiler,
     Changefreq,
     SitemapURL,
+    EmittedCallbackReturns,
     EmittedCallback,
     Emitted,
     AdditionalOptions,
@@ -59,7 +60,8 @@ type SitemapURL = {
    */
   changefreq?: Changefreq | undefined;
 };
-type EmittedCallback = (location: string) => string | SitemapURL;
+type EmittedCallbackReturns = Omit<SitemapURL, 'loc'> | null | undefined;
+type EmittedCallback = (location: string) => EmittedCallbackReturns;
 type Emitted = {
   callback: EmittedCallback;
   /**
