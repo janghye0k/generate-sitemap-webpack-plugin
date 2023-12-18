@@ -1,0 +1,11 @@
+{
+  "items": [{ "name": "index" }],
+  "options": {
+    "options": {
+      "filename": "options.xml",
+      "lastmod": true,
+      "changefreq": "yearly",
+      "priority": 0.6
+    }
+  }
+}

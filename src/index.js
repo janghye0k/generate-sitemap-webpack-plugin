@@ -4,6 +4,7 @@ const schema = require('./options.json');
 const { validate } = require('schema-utils');
 const { minimatch } = require('minimatch');
 const { XMLBuilder } = require('fast-xml-parser');
+const { WebpackError } = require('webpack');
 
 /** @typedef {import("schema-utils/declarations/validate").Schema} Schema */
 /** @typedef {import("webpack").Compiler} Compiler */
@@ -21,9 +22,13 @@ const { XMLBuilder } = require('fast-xml-parser');
  */
 
 /**
+ * @typedef {Omit<SitemapURL, 'loc'> | null | undefined} EmittedCallbackReturns
+ */
+
+/**
  * @callback EmittedCallback
  * @param {string} location URL location created by asset filename (e.g. http://your.site/emitted.html)
- * @returns {string | SitemapURL}
+ * @returns {EmittedCallbackReturns}
  */
 
 /**
@@ -51,12 +56,6 @@ const { XMLBuilder } = require('fast-xml-parser');
 const DEFAULT_PATTERN = '**/*.html';
 const DEFAULT_NAME = 'sitemap.xml';
 const PLUGIN = 'GenerateSitemapWebpackPlugin';
-const URL_ORDER_MAP = {
-  loc: -1,
-  lastmod: 1,
-  priority: 2,
-  changefreq: 3,
-};
 /** @type {Record<string, { validate: (value: any) => boolean; schema: object }>} */
 const URL_VALIDATION_MAP = {
   loc: {
@@ -64,7 +63,7 @@ const URL_VALIDATION_MAP = {
     schema: schema.definitions.SitemapURL.properties.loc,
   },
   lastmod: {
-    validate: () => true,
+    validate: (value) => typeof value === 'string',
     schema: schema.definitions.SitemapURL.properties.lastmod,
   },
   priority: {
@@ -88,11 +87,8 @@ const URL_VALIDATION_MAP = {
 
 const defaultConfig = {
   urls: [],
-  /** @type {{callback: EmittedCallback; pattern: string}} */
-  emitted: { callback: (location) => location, pattern: DEFAULT_PATTERN },
-  options: {
-    filename: DEFAULT_NAME,
-  },
+  emitted: true,
+  options: {},
 };
 
 class SitemapPlugin {
@@ -121,7 +117,7 @@ class SitemapPlugin {
    * @param {SitemapURL[]} sitemapURLs
    * @returns {string}
    */
-  createXMLSitemap(sitemapURLs = []) {
+  createXMLSitemap(sitemapURLs) {
     const xmlObject = {
       urlset: {
         '@_xmlns': 'http://www.sitemaps.org/schemas/sitemap/0.9',
@@ -139,13 +135,14 @@ class SitemapPlugin {
       if (compilation.options.mode !== 'production') return callback();
 
       const { baseURL, urls, emitted, options } = this.options;
-      const { filename, lastmod, ...ele } = options || {};
+      const { filename, lastmod, ...ele } = options;
       /** @type {Omit<SitemapURL, 'loc'>} */
       const commonURLOptions = ele;
 
       if (lastmod === true) {
         commonURLOptions.lastmod = new Date().toISOString();
-      } else if (lastmod !== false) commonURLOptions.lastmod = lastmod;
+      } else if (typeof lastmod === 'string')
+        commonURLOptions.lastmod = lastmod;
 
       // Set baseURL
       const base = baseURL.endsWith('/') ? baseURL : `${baseURL}/`;
@@ -154,32 +151,40 @@ class SitemapPlugin {
       const sitemapURLs = [];
       if (emitted !== false) {
         // add emitted url
-        const emittedParam = emitted === true ? defaultConfig.emitted : emitted;
+        const emittedParam =
+          emitted === true ? /**@type {any} */ ({}) : emitted;
         compilation.emittedAssets.forEach((assetName) => {
-          const callback = emittedParam.callback;
-          const pattern = emittedParam.pattern || DEFAULT_PATTERN;
+          const emittedCallback = emittedParam?.callback || (() => ({}));
+          const pattern = emittedParam?.pattern || DEFAULT_PATTERN;
 
           if (typeof pattern === 'string') {
             if (!minimatch(assetName, pattern, { matchBase: true })) return;
           } else if (!pattern(assetName)) return;
 
           const location = base + assetName;
-          const result = callback(location);
-          const url = typeof result === 'string' ? { loc: result } : result;
-          const sitemapURL = Object.entries({ ...commonURLOptions, ...url }) //@ts-ignore
-            .sort((a, b) => URL_ORDER_MAP[a[0]] - URL_ORDER_MAP[b[0]])
-            .reduce((obj, [k, v]) => {
-              const item = URL_VALIDATION_MAP[k];
-              if (!item.validate(v))
-                throw new Error(`
-                Invalid options.emitted.callback\n
-                this callback's returnValue.${k} should be follow below description\n\n
-                ${Object.entries(item.schema)
+          const result = emittedCallback(location) || {};
+          if (!result || typeof result !== 'object')
+            compilation.errors.push(
+              new WebpackError(
+                `options.emitted.callback should be return object. not to be ${typeof result}`
+              )
+            );
+          const url = { loc: location, ...commonURLOptions, ...result };
+          const sitemapURL = Object.entries(url).reduce((obj, [k, v]) => {
+            const item = URL_VALIDATION_MAP[k];
+            if (!item.validate(v)) {
+              compilation.errors.push(
+                new WebpackError(`Invalid options.emitted.callback\nthis callback's returnValue.${k} should be follow below description\n\n${Object.entries(
+                  item.schema
+                )
                   .map(([key, desc]) => `${key}: ${desc}`)
                   .join('\n')}
-              `);
-              return { ...obj, [k]: v };
-            }, /** @type {any} */ ({}));
+          `)
+              );
+            }
+
+            return { ...obj, [k]: v };
+          }, /** @type {any} */ ({}));
           sitemapURLs.push(sitemapURL);
         });
       }

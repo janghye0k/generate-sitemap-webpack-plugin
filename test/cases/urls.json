@@ -1,0 +1,15 @@
+{
+  "items": [{ "name": "index" }],
+  "options": {
+    "emitted": false,
+    "urls": [
+      "string-url.html",
+      {
+        "loc": "location.html",
+        "lastmod": "2023-12-11",
+        "priority": 0.8,
+        "changefreq": "monthly"
+      }
+    ]
+  }
+}

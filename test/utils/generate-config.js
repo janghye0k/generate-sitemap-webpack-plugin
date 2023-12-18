@@ -6,6 +6,7 @@ import { CleanWebpackPlugin } from 'clean-webpack-plugin';
 /**
  * @typedef {Object} EntryItem
  * @property {string} name
+ * @property {string[]} assets
  * @property {string} [viewExt]
  */
 
@@ -30,35 +31,38 @@ const testRoot = path.resolve(__dirname, '..');
  */
 function checkFile(dir, content = '') {
   const filePath = path.join(testRoot, 'fixtures', dir);
+  const fileDir = path.dirname(filePath);
+  if (!fs.existsSync(fileDir)) fs.mkdirSync(fileDir, { recursive: true });
   fs.writeFileSync(filePath, Buffer.from(content, 'utf-8'));
   return filePath;
 }
 
 /**
- *
  * @param {EntryItem} item
+ * @param {string} [dir]
  */
-function checkEntryItem(item) {
-  const { name, viewExt = 'html' } = item;
-  const view = checkFile(`${name}.${viewExt}`, htmlContent);
-  const js = checkFile(`${name}.js`, item.content || '');
+function checkEntryItem(item, dir = '.') {
+  const { name, assets = [], viewExt = 'html' } = item;
+  const view = checkFile(`${dir}/${name}.${viewExt}`, htmlContent);
+  const content = assets.reduce((acc, asset, index) => {
+    const assetPath = `assets/${asset}`;
+    checkFile(`${dir}/${assetPath}`);
+    return acc + `import asset${index} from './${assetPath}'`;
+  }, '');
+  const js = checkFile(`${dir}/${name}.js`, content || '');
   return { js, view, name, viewExt };
 }
 
 /**
  * @param {EntryItem[]} items
+ * @param {string} [dir]
  */
-function generateConfig(items = [{ name: 'index' }], assets = ['sample.png']) {
+function generateConfig(items, dir = '.') {
   const views = [];
   const entry = {};
-  const assetImportText = assets.reduce((acc, asset, index) => {
-    const assetPath = `assets/${asset}`;
-    checkFile(assetPath);
-    return acc + `import asset${index} from './${assetPath}'`;
-  }, '');
-  items.forEach((item, index) => {
-    if (index === 0) item.content = assetImportText;
-    const { js, view, name, viewExt } = checkEntryItem(item);
+
+  items.forEach((item) => {
+    const { js, view, name, viewExt } = checkEntryItem(item, dir);
     const htmlPlugin = new HtmlWebpackPlugin({
       chunks: [name],
       filename: `${name}.${viewExt}`,
@@ -73,7 +77,7 @@ function generateConfig(items = [{ name: 'index' }], assets = ['sample.png']) {
     mode: 'production',
     entry,
     output: {
-      path: path.join(testRoot, 'dist'),
+      path: path.join(testRoot, 'dist', dir),
       filename: '[name].js',
     },
     module: {
@@ -82,7 +86,7 @@ function generateConfig(items = [{ name: 'index' }], assets = ['sample.png']) {
           test: /\.(?:jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$/i,
           type: 'asset/resource',
           generator: {
-            filename: 'assets/[name][ext]',
+            filename: 'assets/[name]-[hash][ext]',
           },
         },
       ],
@@ -91,4 +95,4 @@ function generateConfig(items = [{ name: 'index' }], assets = ['sample.png']) {
   };
 }
 
-export { generateConfig };
+export { generateConfig, testRoot };

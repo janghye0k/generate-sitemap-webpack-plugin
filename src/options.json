@@ -27,11 +27,10 @@
     },
     "Emitted": {
       "type": "object",
-      "required": ["callback"],
       "properties": {
         "callback": {
           "instanceof": "Function",
-          "tsType": "((location: string) => string | ({loc: string; lastmod?: string; priority?: number; changefreq?: string}))"
+          "tsType": "((location: string) => Omit<SitemapURL, 'loc'> | null | undefined)"
         },
         "pattern": {
           "anyOf": [

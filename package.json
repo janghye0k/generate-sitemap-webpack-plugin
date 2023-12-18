@@ -44,7 +44,7 @@
     "test:only": "cross-env NODE_ENV=test jest",
     "test:watch": "npm run test:only -- --watch",
     "test:coverage": "npm run test:only -- --collectCoverageFrom=\"src/**/*.js\" --coverage",
-    "test": "npm run test:only",
+    "test": "npm run test:coverage",
     "prepare": "husky install",
     "release": "standard-version"
   },
