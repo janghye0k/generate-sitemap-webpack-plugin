@@ -231,9 +231,8 @@ module.exports = {
     new SitemapPlugin({
       baseURL: 'https://your.website',
       emitted: {
-        callback: (loc) => ({
-          loc,
-          priority: loc.includes('index') ? 1 : undefined,
+        callback: (location) => ({
+          priority: location.includes('index') ? 1 : undefined,
           changefreq: 'yearly',
         }),
         pattern: `**/*.{html,ejs}`,
