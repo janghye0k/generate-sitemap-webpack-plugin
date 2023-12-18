@@ -107,19 +107,11 @@ class SitemapPlugin {
    * @param {PluginOptions} options
    */
   constructor(options) {
-    validate(/** @type {Schema} */ (schema), options || {}, {
+    const opts = { ...defaultConfig, ...(options || {}) };
+    validate(/** @type {Schema} */ (schema), opts, {
       name: 'Sitemap Plugin',
       baseDataPath: 'options',
     });
-
-    // Set default options
-    /** @type {any} */
-    const opts = { ...defaultConfig };
-    Object.keys(opts).forEach((key) => {
-      // @ts-ignore
-      opts[key] = Object.assign(opts[key], (options || {})[key] || {});
-    });
-    opts.baseURL = options?.baseURL;
 
     this.options = opts;
   }
@@ -147,12 +139,13 @@ class SitemapPlugin {
       if (compilation.options.mode !== 'production') return callback();
 
       const { baseURL, urls, emitted, options } = this.options;
-      const { filename, ...commonURLOptions } = options || {};
+      const { filename, lastmod, ...ele } = options || {};
+      /** @type {Omit<SitemapURL, 'loc'>} */
+      const commonURLOptions = ele;
 
-      if (commonURLOptions.lastmod === true) {
+      if (lastmod === true) {
         commonURLOptions.lastmod = new Date().toISOString();
-      } else if (commonURLOptions.lastmod === false)
-        delete commonURLOptions.lastmod;
+      } else if (lastmod !== false) commonURLOptions.lastmod = lastmod;
 
       // Set baseURL
       const base = baseURL.endsWith('/') ? baseURL : `${baseURL}/`;
@@ -169,12 +162,11 @@ class SitemapPlugin {
           if (typeof pattern === 'string') {
             if (!minimatch(assetName, pattern, { matchBase: true })) return;
           } else if (!pattern(assetName)) return;
+
           const location = base + assetName;
           const result = callback(location);
           const url = typeof result === 'string' ? { loc: result } : result;
-          const sitemapURL = Object.entries(
-            Object.assign({}, commonURLOptions, url)
-          ) //@ts-ignore
+          const sitemapURL = Object.entries({ ...commonURLOptions, ...url }) //@ts-ignore
             .sort((a, b) => URL_ORDER_MAP[a[0]] - URL_ORDER_MAP[b[0]])
             .reduce((obj, [k, v]) => {
               const item = URL_VALIDATION_MAP[k];
@@ -197,7 +189,7 @@ class SitemapPlugin {
         const item = typeof url === 'string' ? { loc: url } : url;
         const link = item.loc.startsWith('/') ? item.loc.slice(1) : item.loc;
         const loc = base + link;
-        const sitemapURL = Object.assign({}, commonURLOptions, item, { loc });
+        const sitemapURL = { ...commonURLOptions, ...item, loc };
         sitemapURLs.push(sitemapURL);
       });
 
