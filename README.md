@@ -177,6 +177,7 @@ Optional object of configuration settings.
 | ------------ | -------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `filename`   | `string`             | `sitemap.xml` | Name of the sitemap file emitted to your build output                                                                                               |
 | `format`     | `boolean`            | `false`       | Settings for format sitemap file. You can provide formatting options for write file prettier                                                        |
+| `gzip`       | `boolean`            | `true`        | Generating a gzipped `.xml.gz` sitemap. You can provide false to skip generating a gzipped. By default, both xml files are generated                |
 | `lastmod`    | `string` / `boolean` | `false`       | The date for <lastmod> on all urls. Can be overridden by url-specific lastmod config. If value is true, the current date will be used for all urls. |
 | `priority`   | `number`             | `undefined`   | A <priority> to be set globally on all locations. Can be overridden by url-specific priorty config.0.                                               |
 | `changefreq` | `string`             | `undefined`   | A <changefreq> to be set globally on all locations. Can be overridden by url-specific changefreq config.                                            |
@@ -242,7 +243,8 @@ module.exports = {
       ],
       options: {
         filename: 'my-sitemap.xml',
-        format: true,
+        format: true, // default: false
+        gzip: true // default: true
         changefreq: 'monthly',
         lastmod: true,
         priority: 0.6,
