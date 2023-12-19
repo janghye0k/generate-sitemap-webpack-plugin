@@ -190,7 +190,7 @@ Optional object of configuration settings.
 
 ## Examples
 
-<h4 style="color: #9e1519;">Complex Example</h4>
+### 1. Complex Example
 
 **webpack.config.js**
 
@@ -303,7 +303,7 @@ module.exports = {
 </urlset>
 ```
 
-<h4 style="color: #9e1519;">Split Example</h4>
+### 2. Split Example
 
 **webpack.config.js**
 
