@@ -136,7 +136,7 @@ Callback function for use emitted asset filename
 Type:
 
 ```typescript
-type callback = (location: string) => string | SitemapURL;
+type callback = (location: string) => Omit<SitemapURL, 'loc'>;
 ```
 
 <small>
@@ -145,11 +145,7 @@ type callback = (location: string) => string | SitemapURL;
 
 </small>
 
-Default:
-
-```javascript
-const callback = (location) => location;
-```
+Default: `N/A`
 
 #### `pattern`
 
@@ -180,6 +176,7 @@ Optional object of configuration settings.
 | Name         | Type                 | Default       | Description                                                                                                                                         |
 | ------------ | -------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `filename`   | `string`             | `sitemap.xml` | Name of the sitemap file emitted to your build output                                                                                               |
+| `format`     | `boolean`            | `false`       | Settings for format sitemap file. You can provide formatting options for write file prettier                                                        |
 | `lastmod`    | `string` / `boolean` | `false`       | The date for <lastmod> on all urls. Can be overridden by url-specific lastmod config. If value is true, the current date will be used for all urls. |
 | `priority`   | `number`             | `undefined`   | A <priority> to be set globally on all locations. Can be overridden by url-specific priorty config.0.                                               |
 | `changefreq` | `string`             | `undefined`   | A <changefreq> to be set globally on all locations. Can be overridden by url-specific changefreq config.                                            |
@@ -192,6 +189,8 @@ Optional object of configuration settings.
 [size-url]: https://packagephobia.now.sh/result?p=sitemap-generator-webpack-plugin
 
 ## Examples
+
+<h4 style="color: #9e1519;">Complex Example</h4>
 
 **webpack.config.js**
 
@@ -239,10 +238,11 @@ module.exports = {
       },
       urls: [
         'first',
-        { loc: 'second.html', lastmod: '2023-12-11', priority: 0.3 },
+        { loc: 'second.html', lastmod: '2023-12-19', priority: 0.3 },
       ],
       options: {
         filename: 'my-sitemap.xml',
+        format: true,
         changefreq: 'monthly',
         lastmod: true,
         priority: 0.6,
@@ -272,34 +272,92 @@ module.exports = {
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-	<url>
-		<loc>https://your.website/index.html</loc>
-		<lastmod>2023-12-11T03:29:51.291Z</lastmod>
-		<changefreq>yearly</changefreq>
-		<priority>1</priority>
-	</url>
-	<url>
-		<loc>https://your.website/first</loc>
-		<lastmod>2023-12-11T03:29:51.291Z</lastmod>
-		<changefreq>monthly</changefreq>
-		<priority>0.6</priority>
-	</url>
-	<url>
-		<loc>https://your.website/entry.html</loc>
-		<lastmod>2023-12-11T03:29:51.291Z</lastmod>
-		<changefreq>yearly</changefreq>
-	</url>
-	<url>
-		<loc>https://your.website/ejs.ejs</loc>
-		<lastmod>2023-12-11T03:29:51.291Z</lastmod>
-		<changefreq>yearly</changefreq>
-	</url>
-	<url>
-		<loc>https://your.website/second.html</loc>
-		<lastmod>2023-12-11</lastmod>
-		<changefreq>monthly</changefreq>
-		<priority>0.3</priority>
-	</url>
+  <url>
+    <loc>https://your.website/index.html</loc>
+    <lastmod>2023-12-19T03:29:51.291Z</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>1</priority>
+  </url>
+  <url>
+    <loc>https://your.website/first</loc>
+    <lastmod>2023-12-19T03:29:51.291Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://your.website/entry.html</loc>
+    <lastmod>2023-12-19T03:29:51.291Z</lastmod>
+    <changefreq>yearly</changefreq>
+  </url>
+  <url>
+    <loc>https://your.website/ejs.ejs</loc>
+    <lastmod>2023-12-19T03:29:51.291Z</lastmod>
+    <changefreq>yearly</changefreq>
+  </url>
+  <url>
+    <loc>https://your.website/second.html</loc>
+    <lastmod>2023-12-19</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+</urlset>
+```
+
+<h4 style="color: #9e1519;">Split Example</h4>
+
+**webpack.config.js**
+
+```javascript
+const SitemapPlugin = require('sitemap-generator-webpack-plugin');
+
+module.exports = {
+  // Some webpack config
+  ...,
+  plugins: [
+    new SitemapPlugin({
+      baseURL: 'https://your.website',
+      urls: Array.from({ length: 150000 }, (_, i) => ({
+        loc: `${i}.html`,
+        lastmod:
+          i < 50000 ? `2023-12-19` : undefined,
+      })),
+    }),
+  ],
+};
+```
+
+**sitemap.xml**
+
+```xml
+<?xml version="1" encoding="UTF-8"?>
+<sitemapindex>
+  <sitemap>
+    <loc>https://your.website/sitemap1.xml</loc>
+    <lastmod>2023-12-19</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://your.website/sitemap2.xml</loc>
+  </sitemap>
+  <sitemap>
+    <loc>https://your.website/sitemap3.xml</loc>
+  </sitemap>
+</sitemapindex>
+```
+
+**sitemap1.xml**
+
+```xml
+<?xml version="1" encoding="UTF-8"?>
+<urlset>
+  <url>
+    <loc>https://your.website/0.html</loc>
+    <lastmod>2023-12-19</lastmod>
+  </url>
+  <url>
+    <loc>https://your.website/1.html</loc>
+    <lastmod>2023-12-19</lastmod>
+  </url>
+  ... 49,998 items
 </urlset>
 ```
 

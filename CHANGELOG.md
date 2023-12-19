@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.2.0](https://github.com/d0orHyeok/sitemap-generator-webpack-plugin/compare/v0.1.2...v0.2.0) (2023-12-19)
+
+### ⚠ BREAKING CHANGES
+
+- sitemap plugin automaticaly split sitemap file when sitemap has more than 50,000 URLs
+- you can provide formatting options for write file prettier
+
+### Features
+
+- add split sitemap, format options ([dea4b65](https://github.com/d0orHyeok/sitemap-generator-webpack-plugin/commit/dea4b65b6d1ae2f264728b9892f7f961577f7070))
+
 ### [0.1.2](https://github.com/d0orHyeok/sitemap-generator-webpack-plugin/compare/v0.1.1...v0.1.2) (2023-12-18)
 
 ### Features
@@ -23,7 +34,7 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### ⚠ BREAKING CHANGES
 
-- emitted.pattern
+- add emitted.pattern to filter asset (glob pattern)
 
 ### Features
 
