@@ -82,6 +82,11 @@
           "minLength": 1,
           "description": "Name of the sitemap file emitted to your build output"
         },
+        "format": {
+          "type": "boolean",
+          "default": false,
+          "description": "Settings for format sitemap file"
+        },
         "lastmod": {
           "anyOf": [{ "type": "string" }, { "type": "boolean" }],
           "description": "The date for <lastmod> on all urls. Can be overridden by url-specific lastmod config. If value is true, the current date will be used for all urls."

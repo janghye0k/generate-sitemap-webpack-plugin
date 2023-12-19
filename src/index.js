@@ -40,6 +40,7 @@ const { WebpackError } = require('webpack');
 /**
  * @typedef {Object} AdditionalOptions
  * @property {string} [filename] Name of the sitemap file emitted to your build output
+ * @property {boolean} [format] Settings for format sitemap file
  * @property {string | boolean} [lastmod] The date for <lastmod> on all urls. Can be overridden by url-specific lastmod config. If value is true, the current date will be used for all urls.
  * @property {number} [priority] A <priority> to be set globally on all locations. Can be overridden by url-specific priorty config.
  * @property {Changefreq} [changefreq] A <changefreq> to be set globally on all locations. Can be overridden by url-specific changefreq config.
@@ -58,10 +59,6 @@ const DEFAULT_NAME = 'sitemap.xml';
 const PLUGIN = 'GenerateSitemapWebpackPlugin';
 /** @type {Record<string, { validate: (value: any) => boolean; schema: object }>} */
 const URL_VALIDATION_MAP = {
-  loc: {
-    validate: (value) => typeof value === 'string',
-    schema: schema.definitions.SitemapURL.properties.loc,
-  },
   lastmod: {
     validate: (value) => typeof value === 'string',
     schema: schema.definitions.SitemapURL.properties.lastmod,
@@ -85,10 +82,20 @@ const URL_VALIDATION_MAP = {
   },
 };
 
-const defaultConfig = {
+const DEFAULT_CONFIG = {
   urls: [],
   emitted: true,
-  options: {},
+  options: {
+    format: false,
+  },
+};
+
+const MAX_URL_SIZE = 50000;
+
+const XML_PREFIX = `<?xml version="1" encoding="UTF-8"?>\n`;
+
+const XML_ATTRS = {
+  sitemap: { '@_xmlns': 'http://www.sitemaps.org/schemas/sitemap/0.9' },
 };
 
 class SitemapPlugin {
@@ -103,7 +110,7 @@ class SitemapPlugin {
    * @param {PluginOptions} options
    */
   constructor(options) {
-    const opts = { ...defaultConfig, ...(options || {}) };
+    const opts = { ...DEFAULT_CONFIG, ...(options || {}) };
     validate(/** @type {Schema} */ (schema), opts, {
       name: 'Sitemap Plugin',
       baseDataPath: 'options',
@@ -113,20 +120,90 @@ class SitemapPlugin {
   }
 
   /**
+   * @template T
+   * @param {Array<T>} arr
+   * @param {number} size
+   * @returns {Array<T[]>}
+   */
+  chunkArray(arr, size) {
+    return Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
+      arr.slice(i * size, i * size + size)
+    );
+  }
+
+  /**
+   *
+   * @param {SitemapURL[]} arr
+   */
+  maxLastmod(arr) {
+    return arr.reduce(
+      /** @param {string | undefined} result */
+      (result, url) => {
+        if (!url.lastmod) return result;
+        if (!result) return url.lastmod;
+        const a = new Date(result);
+        const b = new Date(url.lastmod);
+        return a > b ? result : url.lastmod;
+      },
+      undefined
+    );
+  }
+
+  /**
    * @private
    * @param {SitemapURL[]} sitemapURLs
-   * @returns {string}
+   * @param {string} outputPath
+   * @param {string} filename
    */
-  createXMLSitemap(sitemapURLs) {
-    const xmlObject = {
-      urlset: {
-        '@_xmlns': 'http://www.sitemaps.org/schemas/sitemap/0.9',
-        url: sitemapURLs,
-      },
-    };
+  createXMLSitemap(sitemapURLs, outputPath, filename = DEFAULT_NAME) {
+    const ext = path.extname(filename);
+    const basename = filename.substring(0, filename.length - ext.length);
 
     const builder = new XMLBuilder({ ignoreAttributes: false, format: true });
-    return `<?xml version="1" encoding="UTF-8"?>\n` + builder.build(xmlObject);
+    const chunkURLs = this.chunkArray(sitemapURLs, MAX_URL_SIZE);
+    const chunkSize = chunkURLs.length;
+
+    const rootFilePath = path.join(outputPath, filename);
+
+    /** @type {Map<string, object>} */
+    const xmlMap = new Map();
+    const xmlBase = { ...XML_ATTRS.sitemap };
+    if (chunkSize === 1) {
+      const xml = { ...xmlBase, urlset: { url: sitemapURLs } };
+      xmlMap.set(rootFilePath, xml);
+    } else {
+      // chunk case
+      // create sitemapindex file
+
+      const baseURL = this.options.baseURL;
+
+      const xmlRoot = {
+        ...xmlBase,
+        sitemapindex: {
+          sitemap: chunkURLs.map((chunkURL, index) => {
+            // create chunked sitemap
+            const chunkFilename = `${basename}${index + 1}${ext}`;
+            const xml = { ...xmlBase, urlset: { url: chunkURL } };
+            xmlMap.set(path.join(outputPath, chunkFilename), xml);
+
+            // create sitemap instance
+            return {
+              loc: baseURL + chunkFilename,
+              lastmod: this.maxLastmod(chunkURL),
+            };
+          }),
+        },
+      };
+      xmlMap.set(rootFilePath, xmlRoot);
+    }
+
+    const format = this.options?.options?.format;
+
+    xmlMap.forEach((xml, file) => {
+      let data = XML_PREFIX + builder.build(xml);
+      if (format) data = data.replace(/\\n/gi, '');
+      fs.writeFileSync(file, data, 'utf-8');
+    });
   }
 
   /** @param {Compiler} compiler */
@@ -146,6 +223,7 @@ class SitemapPlugin {
 
       // Set baseURL
       const base = baseURL.endsWith('/') ? baseURL : `${baseURL}/`;
+      this.options.baseURL = base;
 
       /** @type {SitemapURL[]} */
       const sitemapURLs = [];
@@ -172,7 +250,7 @@ class SitemapPlugin {
           const url = { loc: location, ...commonURLOptions, ...result };
           const sitemapURL = Object.entries(url).reduce((obj, [k, v]) => {
             const item = URL_VALIDATION_MAP[k];
-            if (!item.validate(v)) {
+            if (item && !item.validate(v)) {
               compilation.errors.push(
                 new WebpackError(`Invalid options.emitted.callback\nthis callback's returnValue.${k} should be follow below description\n\n${Object.entries(
                   item.schema
@@ -191,25 +269,31 @@ class SitemapPlugin {
 
       // add custom url
       urls.forEach((url) => {
-        const item = typeof url === 'string' ? { loc: url } : url;
-        const link = item.loc.startsWith('/') ? item.loc.slice(1) : item.loc;
-        const loc = base + link;
-        const sitemapURL = { ...commonURLOptions, ...item, loc };
+        const { loc, ...item } = typeof url === 'string' ? { loc: url } : url;
+        const link = loc.startsWith('/') ? loc.slice(1) : loc;
+        const sitemapURL = { loc: base + link, ...commonURLOptions, ...item };
         sitemapURLs.push(sitemapURL);
       });
 
-      const sortedURLs = sitemapURLs.sort((a, b) => {
-        const comapre = (b.priority ?? 0.5) - (a.priority ?? 0.5);
-        return comapre;
-      });
+      const sortedURLs = sitemapURLs
+        .sort((a, b) => {
+          const comapre = (b.priority ?? 0.5) - (a.priority ?? 0.5);
+          return comapre;
+        })
+        .map(({ loc, lastmod, changefreq, priority }) => ({
+          loc,
+          lastmod,
+          changefreq,
+          priority,
+        }));
 
       // create sitemap
-      /** @type {any} */
       const outputPath = compilation.options.output.path;
-      const sitemapPath = path.resolve(outputPath, filename || DEFAULT_NAME);
-      fs.writeFileSync(sitemapPath, this.createXMLSitemap(sortedURLs), {
-        encoding: 'utf8',
-      });
+      this.createXMLSitemap(
+        sortedURLs,
+        /** @type {any} */ (outputPath),
+        filename
+      );
 
       callback();
     });
