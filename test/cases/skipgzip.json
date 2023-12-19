@@ -1,0 +1,8 @@
+{
+  "items": [{ "name": "index" }],
+  "options": {
+    "options": {
+      "gzip": false
+    }
+  }
+}

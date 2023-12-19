@@ -1,4 +1,5 @@
 export { default as basic } from './basic.json';
+export { default as skipgzip } from './skipgzip.json';
 export { default as urls } from './urls.json';
 export { default as emitted } from './emitted.js';
 export { default as emittedPattern } from './emitted-pattern.js';

@@ -23,3 +23,12 @@ export function loadXML(target, dir = '.') {
   const results = parser.parse(fileText);
   return results;
 }
+
+/**
+ * @param {string} target
+ * @param {string} [dir]
+ */
+export function hasGzip(target, dir = '.') {
+  const targetPath = path.resolve(__dirname, '..', 'dist', dir, `${target}.gz`);
+  return fs.existsSync(targetPath);
+}

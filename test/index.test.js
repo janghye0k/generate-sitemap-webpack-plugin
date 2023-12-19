@@ -1,7 +1,7 @@
 import { webpack } from 'webpack';
 import { generateConfig, testRoot } from './utils/generate-config';
 import SitemapPlugin from '../src';
-import { loadXML } from './utils/xml';
+import { hasGzip, loadXML } from './utils/xml';
 import * as cases from './cases';
 import fs from 'fs';
 import path from 'path';
@@ -48,15 +48,22 @@ describe('* Suite: check sitemap & build result is match', () => {
           const compilationErrors = (stats.compilation.errors || []).join('\n');
           expect(compilationErrors).toBe('');
 
+          const isGzip = options.options?.gzip ?? true;
           const xmlRoot = loadXML(filename, key);
           // sitemap file should be exist
           expect(xmlRoot).not.toBe(false);
+          // check sitemap has gzip
+          expect(hasGzip(filename, key)).toBe(isGzip);
 
           const xmlDatas = [];
           if (Array.isArray(xmlRoot.sitemapindex?.sitemap)) {
             xmlRoot.sitemapindex.sitemap.forEach((item) => {
-              const xml = loadXML(item.loc.replace(baseURL + '/', ''), key);
+              const sitemapPath = item.loc
+                .replace(baseURL + '/', '')
+                .replace('.xml.gz', '.xml');
+              const xml = loadXML(sitemapPath, key);
               expect(xml).not.toBe(false);
+              expect(hasGzip(sitemapPath, key)).toBe(isGzip);
               xmlDatas.push(xml);
             });
           } else xmlDatas.push(xmlRoot);

@@ -109,19 +109,6 @@ describe('* Suite: check plugin option schema', () => {
     });
   });
 
-  test('CASE: check options.options.filename is string', () => {
-    const types = { ...typeCase };
-    delete types.string;
-    Object.values(types).forEach((filename) => {
-      expect(
-        () => new SitemapPlugin({ baseURL, options: { filename } })
-      ).toThrow();
-    });
-    expect(
-      () => new SitemapPlugin({ baseURL, options: { filename: 'sitemap.xml' } })
-    ).not.toThrow();
-  });
-
   test('CASE: check options.emitted.callback return correct value', (done) => {
     const config = generateConfig([{ name: 'index' }], 'emitted-incorrect');
     config.plugins.push(
@@ -145,5 +132,40 @@ describe('* Suite: check plugin option schema', () => {
         return done();
       }
     );
+  });
+
+  test('CASE: check options.options.filename is string', () => {
+    const types = { ...typeCase };
+    delete types.string;
+    Object.values(types).forEach((filename) => {
+      expect(
+        () => new SitemapPlugin({ baseURL, options: { filename } })
+      ).toThrow();
+    });
+    expect(
+      () => new SitemapPlugin({ baseURL, options: { filename: 'sitemap.xml' } })
+    ).not.toThrow();
+  });
+
+  test('CASE: check options.options.format is boolean', () => {
+    const { boolean, ...types } = typeCase;
+    Object.values(types).forEach((format) => {
+      expect(
+        () => new SitemapPlugin({ baseURL, options: { format } })
+      ).toThrow();
+    });
+    expect(
+      () => new SitemapPlugin({ baseURL, options: { format: boolean } })
+    ).not.toThrow();
+  });
+
+  test('CASE: check options.options.gzip is boolean', () => {
+    const { boolean, ...types } = typeCase;
+    Object.values(types).forEach((gzip) => {
+      expect(() => new SitemapPlugin({ baseURL, options: { gzip } })).toThrow();
+    });
+    expect(
+      () => new SitemapPlugin({ baseURL, options: { gzip: boolean } })
+    ).not.toThrow();
   });
 });
