@@ -26,6 +26,7 @@ export default {
     },
     options: {
       filename: 'options.xml',
+      format: true,
       lastmod: '2022-02-02',
       changefreq: 'yearly',
       priority: 0.6,

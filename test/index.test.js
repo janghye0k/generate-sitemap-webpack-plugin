@@ -48,31 +48,46 @@ describe('* Suite: check sitemap & build result is match', () => {
           const compilationErrors = (stats.compilation.errors || []).join('\n');
           expect(compilationErrors).toBe('');
 
-          const results = loadXML(filename, key);
+          const xmlRoot = loadXML(filename, key);
           // sitemap file should be exist
-          expect(results).not.toBe(false);
+          expect(xmlRoot).not.toBe(false);
 
-          const skipMap = {};
+          const xmlDatas = [];
+          if (Array.isArray(xmlRoot.sitemapindex?.sitemap)) {
+            xmlRoot.sitemapindex.sitemap.forEach((item) => {
+              const xml = loadXML(item.loc.replace(baseURL + '/', ''), key);
+              expect(xml).not.toBe(false);
+              xmlDatas.push(xml);
+            });
+          } else xmlDatas.push(xmlRoot);
+
+          const locationSet = new Set();
+          xmlDatas.forEach((xmlData) => {
+            expect(Array.isArray(xmlData.urlset.url)).toBe(true);
+            xmlData.urlset.url.forEach((url) => locationSet.add(url.loc));
+          });
 
           if (Array.isArray(options?.urls)) {
             options.urls.forEach((url) => {
-              const target = typeof url === 'string' ? url : url.loc;
-              const find = results.urlset.url.find((item) =>
-                item.loc.includes(target)
-              );
+              const target =
+                baseURL +
+                `/${typeof url === 'string' ? url : url.loc}`.replace(
+                  '//',
+                  '/'
+                );
               // custom url should be contained
-              expect(find).not.toBe(undefined);
-              if (find) skipMap[find.loc] = true;
+              if (!locationSet.has(target)) console.log(url, target);
+              expect(locationSet.has(target)).toBe(true);
+              locationSet.delete(target);
             });
           }
 
-          results.urlset.url.forEach((item) => {
-            if (skipMap[item.loc]) return;
+          locationSet.forEach((item) => {
             const filePath = path.join(
               testRoot,
               'dist',
               key,
-              item.loc.replace(baseURL, '')
+              item.replace(baseURL, '')
             );
             // emitted asset should be exist
             expect(fs.existsSync(filePath)).toBe(true);

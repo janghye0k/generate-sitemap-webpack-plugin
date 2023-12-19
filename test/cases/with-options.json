@@ -3,6 +3,7 @@
   "options": {
     "options": {
       "filename": "options.xml",
+      "format": true,
       "lastmod": true,
       "changefreq": "yearly",
       "priority": 0.6

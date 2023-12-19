@@ -2,7 +2,7 @@ import { XMLParser } from 'fast-xml-parser';
 import fs from 'fs';
 import path from 'path';
 
-const isArrayKeys = ['url'];
+const isArrayKeys = ['url', 'sitemap'];
 
 /**
  * @param {string} target
