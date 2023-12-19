@@ -87,6 +87,11 @@
           "default": false,
           "description": "Settings for format sitemap file"
         },
+        "gzip": {
+          "type": "boolean",
+          "default": true,
+          "description": "Generating a gzipped `.xml.gz` sitemap.  You can provide false to skip generating a gzipped. By default, both xml files are generated"
+        },
         "lastmod": {
           "anyOf": [{ "type": "string" }, { "type": "boolean" }],
           "description": "The date for <lastmod> on all urls. Can be overridden by url-specific lastmod config. If value is true, the current date will be used for all urls."

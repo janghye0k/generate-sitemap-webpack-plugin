@@ -1,4 +1,5 @@
 const path = require('path');
+const zlib = require('zlib');
 const fs = require('fs');
 const schema = require('./options.json');
 const { validate } = require('schema-utils');
@@ -41,6 +42,7 @@ const { WebpackError } = require('webpack');
  * @typedef {Object} AdditionalOptions
  * @property {string} [filename] Name of the sitemap file emitted to your build output
  * @property {boolean} [format] Settings for format sitemap file
+ * @property {boolean} [gzip] Generating a gzipped `.xml.gz` sitemap.  You can provide false to skip generating a gzipped. By default, both xml files are generated
  * @property {string | boolean} [lastmod] The date for <lastmod> on all urls. Can be overridden by url-specific lastmod config. If value is true, the current date will be used for all urls.
  * @property {number} [priority] A <priority> to be set globally on all locations. Can be overridden by url-specific priorty config.
  * @property {Changefreq} [changefreq] A <changefreq> to be set globally on all locations. Can be overridden by url-specific changefreq config.
@@ -56,6 +58,9 @@ const { WebpackError } = require('webpack');
 
 const DEFAULT_PATTERN = '**/*.html';
 const DEFAULT_NAME = 'sitemap.xml';
+const DEFAULT_FORMAT = false;
+const DEFAULT_GZIP = true;
+
 const PLUGIN = 'GenerateSitemapWebpackPlugin';
 /** @type {Record<string, { validate: (value: any) => boolean; schema: object }>} */
 const URL_VALIDATION_MAP = {
@@ -85,9 +90,7 @@ const URL_VALIDATION_MAP = {
 const DEFAULT_CONFIG = {
   urls: [],
   emitted: true,
-  options: {
-    format: false,
-  },
+  options: {},
 };
 
 const MAX_URL_SIZE = 50000;
@@ -165,6 +168,8 @@ class SitemapPlugin {
 
     const rootFilePath = path.join(outputPath, filename);
 
+    const isGzip = this.options.options?.gzip ?? DEFAULT_GZIP;
+
     /** @type {Map<string, object>} */
     const xmlMap = new Map();
     const xmlBase = { ...XML_ATTRS.sitemap };
@@ -187,22 +192,28 @@ class SitemapPlugin {
             xmlMap.set(path.join(outputPath, chunkFilename), xml);
 
             // create sitemap instance
-            return {
+            const sitemap = {
               loc: baseURL + chunkFilename,
               lastmod: this.maxLastmod(chunkURL),
             };
+            if (isGzip) sitemap.loc += '.gz';
+            return sitemap;
           }),
         },
       };
       xmlMap.set(rootFilePath, xmlRoot);
     }
 
-    const format = this.options?.options?.format;
+    const isFormat = this.options.options?.format ?? DEFAULT_FORMAT;
 
-    xmlMap.forEach((xml, file) => {
+    xmlMap.forEach(async (xml, file) => {
       let data = XML_PREFIX + builder.build(xml);
-      if (format) data = data.replace(/\\n/gi, '');
+      if (isFormat) data = data.replace(/\\n/gi, '');
       fs.writeFileSync(file, data, 'utf-8');
+
+      if (!isGzip) return;
+      const compressed = zlib.gzipSync(Buffer.from(data));
+      fs.writeFileSync(file + '.gz', compressed);
     });
   }
 
