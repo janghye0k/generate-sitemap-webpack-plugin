@@ -9,6 +9,7 @@ const { WebpackError } = require('webpack');
 
 /** @typedef {import("schema-utils/declarations/validate").Schema} Schema */
 /** @typedef {import("webpack").Compiler} Compiler */
+/** @typedef {import("webpack").Compilation} Compilation */
 
 /**
  * @typedef {'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' |'never'} Changefreq
@@ -33,9 +34,22 @@ const { WebpackError } = require('webpack');
  */
 
 /**
- * @typedef {Object} Emitted
+ * @typedef {Object} EmittedOptions
  * @property {EmittedCallback} callback
  * @property {string | ((asset: string) => boolean)} [pattern] Specific pattern to filter the asset (e.g. .html), This can be string (glob pattern) or you can provide function instead of string pattern
+ */
+
+/**
+ * @callback ChunkCallback
+ * @param {string} name
+ * @param {string} hash
+ * @returns {SitemapURL | string | undefined | null}
+ */
+
+/**
+ * @typedef {Object} ChunkOptions
+ * @property {ChunkCallback} callback
+ * @property {boolean} img Options for add image sitemap (Default: true)
  */
 
 /**
@@ -52,7 +66,8 @@ const { WebpackError } = require('webpack');
  * @typedef {Object} PluginOptions
  * @property {string} baseURL Root URL of your site (e.g. https://your.site)
  * @property {Array<string | SitemapURL>} [urls] Optional array of locations on your site. These can be strings or you can provide object to customize each url.
- * @property {Emitted | boolean} [emitted] Optional object to customize each url by webpack emitted assets
+ * @property {EmittedOptions | boolean} [emitted] Optional object to customize each url by webpack emitted assets
+ * @property {ChunkOptions} [chunk] Optional object to customize each url by webpack chunk. You can use auxiliary file to make sitemap include image
  * @property {AdditionalOptions} [options] Optional object of configuration settings.
  */
 
@@ -60,6 +75,8 @@ const DEFAULT_PATTERN = '**/*.html';
 const DEFAULT_NAME = 'sitemap.xml';
 const DEFAULT_FORMAT = false;
 const DEFAULT_GZIP = true;
+const IMAGE_PATTERN =
+  '**/*.{apng,avif,gif,jpg,jpeg,jfif,pjpeg,pjp,png,svg,webp,bmp,ico,cur,tif,tiff}';
 
 const PLUGIN = 'GenerateSitemapWebpackPlugin';
 /** @type {Record<string, { validate: (value: any) => boolean; schema: object }>} */
@@ -88,25 +105,27 @@ const URL_VALIDATION_MAP = {
 };
 
 const DEFAULT_CONFIG = {
-  urls: [],
   emitted: true,
-  options: {},
 };
 
 const MAX_URL_SIZE = 50000;
-
-const XML_PREFIX = `<?xml version="1" encoding="UTF-8"?>\n`;
-
+const XML_PREFIX = `<?xml version="1" encoding="UTF-8"?>`;
 const XML_ATTRS = {
-  sitemap: { '@_xmlns': 'http://www.sitemaps.org/schemas/sitemap/0.9' },
+  base: { '@_xmlns': 'http://www.sitemaps.org/schemas/sitemap/0.9' },
+  image: { '@_xmlns:image': 'http://www.google.com/schemas/sitemap-image/1.1' },
 };
 
 class SitemapPlugin {
   /**
    * @private
-   * @type {{baseURL: string; urls: Array<string | SitemapURL>; emitted: Emitted | boolean; options: AdditionalOptions}}
+   * @type {PluginOptions & { emitted: boolean | EmittedOptions }}
    */
   options;
+  /**
+   * @private
+   * @type {Omit<SitemapURL, 'loc'>}
+   */
+  commonURLOptions;
 
   /**
    *
@@ -118,11 +137,24 @@ class SitemapPlugin {
       name: 'Sitemap Plugin',
       baseDataPath: 'options',
     });
-
     this.options = opts;
+
+    // Set baseURL
+    const { baseURL } = this.options;
+    this.options.baseURL = baseURL.endsWith('/') ? baseURL : `${baseURL}/`;
+
+    // Set common options
+    const { lastmod, changefreq, priority } = this.options.options || {};
+    this.commonURLOptions = { lastmod: undefined, changefreq, priority };
+
+    if (lastmod === true) {
+      this.commonURLOptions.lastmod = new Date().toISOString();
+    } else if (typeof lastmod === 'string')
+      this.commonURLOptions.lastmod = lastmod;
   }
 
   /**
+   * @private
    * @template T
    * @param {Array<T>} arr
    * @param {number} size
@@ -135,7 +167,7 @@ class SitemapPlugin {
   }
 
   /**
-   *
+   * @private
    * @param {SitemapURL[]} arr
    */
   maxLastmod(arr) {
@@ -155,41 +187,60 @@ class SitemapPlugin {
   /**
    * @private
    * @param {SitemapURL[]} sitemapURLs
-   * @param {string} outputPath
-   * @param {string} filename
    */
-  createXMLSitemap(sitemapURLs, outputPath, filename = DEFAULT_NAME) {
+  createSitemapData(sitemapURLs) {
+    const imageURL = sitemapURLs.some(
+      /** @param {any} url */
+      (url) => Array.isArray(url['image:image'])
+    );
+    const data = {
+      ...XML_ATTRS.base,
+      ...(imageURL ? XML_ATTRS.image : {}),
+      urlset: {
+        url: sitemapURLs,
+      },
+    };
+    return data;
+  }
+
+  /**
+   * @private
+   * @param {SitemapURL[]} sitemapURLs
+   * @param {string} outputPath
+   */
+  createXMLSitemap(sitemapURLs, outputPath) {
+    const filename = this.options.options?.filename || DEFAULT_NAME;
+
     const ext = path.extname(filename);
     const basename = filename.substring(0, filename.length - ext.length);
+    const rootFilePath = path.join(outputPath, filename);
+    const isFormat = this.options.options?.format ?? DEFAULT_FORMAT;
+    const isGzip = this.options.options?.gzip ?? DEFAULT_GZIP;
 
-    const builder = new XMLBuilder({ ignoreAttributes: false, format: true });
+    const builder = new XMLBuilder({
+      format: isFormat,
+      ignoreAttributes: false,
+    });
     const chunkURLs = this.chunkArray(sitemapURLs, MAX_URL_SIZE);
     const chunkSize = chunkURLs.length;
 
-    const rootFilePath = path.join(outputPath, filename);
-
-    const isGzip = this.options.options?.gzip ?? DEFAULT_GZIP;
-
     /** @type {Map<string, object>} */
     const xmlMap = new Map();
-    const xmlBase = { ...XML_ATTRS.sitemap };
-    if (chunkSize === 1) {
-      const xml = { ...xmlBase, urlset: { url: sitemapURLs } };
-      xmlMap.set(rootFilePath, xml);
-    } else {
+    if (chunkSize > 1) {
       // chunk case
       // create sitemapindex file
-
       const baseURL = this.options.baseURL;
 
       const xmlRoot = {
-        ...xmlBase,
+        ...XML_ATTRS.base,
         sitemapindex: {
           sitemap: chunkURLs.map((chunkURL, index) => {
             // create chunked sitemap
             const chunkFilename = `${basename}${index + 1}${ext}`;
-            const xml = { ...xmlBase, urlset: { url: chunkURL } };
-            xmlMap.set(path.join(outputPath, chunkFilename), xml);
+            xmlMap.set(
+              path.join(outputPath, chunkFilename),
+              this.createSitemapData(chunkURL)
+            );
 
             // create sitemap instance
             const sitemap = {
@@ -202,13 +253,10 @@ class SitemapPlugin {
         },
       };
       xmlMap.set(rootFilePath, xmlRoot);
-    }
-
-    const isFormat = this.options.options?.format ?? DEFAULT_FORMAT;
+    } else xmlMap.set(rootFilePath, this.createSitemapData(sitemapURLs));
 
     xmlMap.forEach(async (xml, file) => {
-      let data = XML_PREFIX + builder.build(xml);
-      if (isFormat) data = data.replace(/\\n/gi, '');
+      const data = XML_PREFIX + (isFormat ? `\n` : '') + builder.build(xml);
       fs.writeFileSync(file, data, 'utf-8');
 
       if (!isGzip) return;
@@ -217,94 +265,157 @@ class SitemapPlugin {
     });
   }
 
+  /**
+   * Generate sitemap data ues emittedAssets
+   * @private
+   * @param {Compilation} compilation
+   * @returns {SitemapURL[]}
+   */
+  generateSitemapDataFromEmittedAssets(compilation) {
+    const { baseURL, emitted } = this.options;
+
+    /** @type {SitemapURL[]} */
+    const sitemapURLs = [];
+    if (emitted === false) return sitemapURLs;
+
+    // add emitted url
+    const emittedParam = emitted === true ? /**@type {any} */ ({}) : emitted;
+    const callback = emittedParam?.callback || (() => ({}));
+    const pattern = emittedParam?.pattern || DEFAULT_PATTERN;
+
+    compilation.emittedAssets.forEach((assetName) => {
+      if (typeof pattern === 'string') {
+        if (!minimatch(assetName, pattern, { matchBase: true })) return;
+      } else if (!pattern(assetName)) return;
+
+      const location = baseURL + assetName;
+      const result = callback(location) || {};
+      if (!result || typeof result !== 'object')
+        compilation.errors.push(
+          new WebpackError(
+            `options.emitted.callback should be return object. not to be ${typeof result}`
+          )
+        );
+
+      /** @type {SitemapURL} */
+      const { loc, lastmod, changefreq, priority } = {
+        loc: location,
+        ...this.commonURLOptions,
+        ...result,
+      };
+      const sitemapURL = Object.entries({
+        loc,
+        lastmod,
+        changefreq,
+        priority,
+      }).reduce((obj, [k, v]) => {
+        const item = URL_VALIDATION_MAP[k];
+        if (item && v !== undefined && !item.validate(v)) {
+          compilation.errors.push(
+            new WebpackError(
+              `Invalid options.emitted.callback\nthis callback's returnValue.${k} should be follow below description\n\n${Object.entries(
+                item.schema
+              )
+                .map(([key, desc]) => `${key}: ${desc}`)
+                .join('\n')}`
+            )
+          );
+        }
+        return { ...obj, [k]: v };
+      }, /** @type {any} */ ({}));
+      sitemapURLs.push(sitemapURL);
+    });
+
+    return sitemapURLs;
+  }
+
+  /**
+   * Generate sitemap data by custom url options
+   * @private
+   * @returns {SitemapURL[]}
+   */
+  generateSitemapDataFromURL() {
+    const URLs = this.options.urls || [];
+
+    return URLs.map((url) => {
+      const { loc: location, ...item } =
+        typeof url === 'string' ? { loc: url } : url;
+      const link = location.startsWith('/') ? location.slice(1) : location;
+      const { loc, lastmod, changefreq, priority } = {
+        loc: this.options.baseURL + link,
+        ...this.commonURLOptions,
+        ...item,
+      };
+      return { loc, lastmod, changefreq, priority };
+    });
+  }
+
+  /**
+   * @private
+   * @param {Compilation['chunks']} chunks
+   * @returns {SitemapURL[]}
+   */
+  generateSitemapDataFromChunks(chunks) {
+    const { callback, img = true } = this.options.chunk || {};
+    const { baseURL } = this.options;
+
+    /** @type {SitemapURL[]} */
+    const sitemapURLs = [];
+    if (typeof callback !== 'function') return sitemapURLs;
+
+    chunks.forEach((chunk) => {
+      const { name, hash, auxiliaryFiles } = chunk;
+      if (!name || !hash) return;
+      const returnValues = callback(name, hash);
+      if (!returnValues) return;
+
+      const { loc, lastmod, changefreq, priority } = /** @type {SitemapURL} */ (
+        typeof returnValues === 'string' ? { loc: returnValues } : returnValues
+      );
+      const location = loc.startsWith('/') ? loc.substring(1) : loc;
+      /** @type {any} */
+      const sitemapURL = {
+        loc: baseURL + location,
+        lastmod,
+        changefreq,
+        priority,
+      };
+      sitemapURLs.push(sitemapURL);
+
+      if (!img) return;
+      /** @type {string[]} */
+      const images = [];
+      auxiliaryFiles.forEach((file) => {
+        if (minimatch(file, IMAGE_PATTERN, { matchBase: true }))
+          images.push(file);
+      });
+      if (images.length === 0) return;
+
+      sitemapURL['image:image'] = images.map((img) => ({
+        'image:loc': baseURL + img,
+      }));
+    });
+
+    return sitemapURLs;
+  }
+
   /** @param {Compiler} compiler */
   apply(compiler) {
     compiler.hooks.afterEmit.tapAsync(PLUGIN, (compilation, callback) => {
       if (compilation.options.mode !== 'production') return callback();
 
-      const { baseURL, urls, emitted, options } = this.options;
-      const { filename, lastmod, ...ele } = options;
-      /** @type {Omit<SitemapURL, 'loc'>} */
-      const commonURLOptions = ele;
-
-      if (lastmod === true) {
-        commonURLOptions.lastmod = new Date().toISOString();
-      } else if (typeof lastmod === 'string')
-        commonURLOptions.lastmod = lastmod;
-
-      // Set baseURL
-      const base = baseURL.endsWith('/') ? baseURL : `${baseURL}/`;
-      this.options.baseURL = base;
-
-      /** @type {SitemapURL[]} */
-      const sitemapURLs = [];
-      if (emitted !== false) {
-        // add emitted url
-        const emittedParam =
-          emitted === true ? /**@type {any} */ ({}) : emitted;
-        compilation.emittedAssets.forEach((assetName) => {
-          const emittedCallback = emittedParam?.callback || (() => ({}));
-          const pattern = emittedParam?.pattern || DEFAULT_PATTERN;
-
-          if (typeof pattern === 'string') {
-            if (!minimatch(assetName, pattern, { matchBase: true })) return;
-          } else if (!pattern(assetName)) return;
-
-          const location = base + assetName;
-          const result = emittedCallback(location) || {};
-          if (!result || typeof result !== 'object')
-            compilation.errors.push(
-              new WebpackError(
-                `options.emitted.callback should be return object. not to be ${typeof result}`
-              )
-            );
-          const url = { loc: location, ...commonURLOptions, ...result };
-          const sitemapURL = Object.entries(url).reduce((obj, [k, v]) => {
-            const item = URL_VALIDATION_MAP[k];
-            if (item && !item.validate(v)) {
-              compilation.errors.push(
-                new WebpackError(`Invalid options.emitted.callback\nthis callback's returnValue.${k} should be follow below description\n\n${Object.entries(
-                  item.schema
-                )
-                  .map(([key, desc]) => `${key}: ${desc}`)
-                  .join('\n')}
-          `)
-              );
-            }
-
-            return { ...obj, [k]: v };
-          }, /** @type {any} */ ({}));
-          sitemapURLs.push(sitemapURL);
-        });
-      }
-
-      // add custom url
-      urls.forEach((url) => {
-        const { loc, ...item } = typeof url === 'string' ? { loc: url } : url;
-        const link = loc.startsWith('/') ? loc.slice(1) : loc;
-        const sitemapURL = { loc: base + link, ...commonURLOptions, ...item };
-        sitemapURLs.push(sitemapURL);
+      const sitemapURLs = [
+        ...this.generateSitemapDataFromEmittedAssets(compilation),
+        ...this.generateSitemapDataFromURL(),
+        ...this.generateSitemapDataFromChunks(compilation.chunks),
+      ].sort((a, b) => {
+        const comapre = (b.priority ?? 0.5) - (a.priority ?? 0.5);
+        return comapre;
       });
-
-      const sortedURLs = sitemapURLs
-        .sort((a, b) => {
-          const comapre = (b.priority ?? 0.5) - (a.priority ?? 0.5);
-          return comapre;
-        })
-        .map(({ loc, lastmod, changefreq, priority }) => ({
-          loc,
-          lastmod,
-          changefreq,
-          priority,
-        }));
 
       // create sitemap
       const outputPath = compilation.options.output.path;
-      this.createXMLSitemap(
-        sortedURLs,
-        /** @type {any} */ (outputPath),
-        filename
-      );
+      this.createXMLSitemap(sitemapURLs, /** @type {any} */ (outputPath));
 
       callback();
     });

@@ -5,10 +5,13 @@ import { hasGzip, loadXML } from './utils/xml';
 import * as cases from './cases';
 import fs from 'fs';
 import path from 'path';
+import { rimraf } from 'rimraf';
 
 const baseURL = 'https://your.website';
 
 describe('* Suite: check sitemap & build result is match', () => {
+  rimraf(path.resolve(__dirname, 'dist'));
+
   it('CASE: only xml file created at production mode', (done) => {
     const config = generateConfig([{ name: 'index' }], 'devmode');
     config.mode = 'development';

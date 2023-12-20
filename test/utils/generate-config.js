@@ -47,7 +47,7 @@ function checkEntryItem(item, dir = '.') {
   const content = assets.reduce((acc, asset, index) => {
     const assetPath = `assets/${asset}`;
     checkFile(`${dir}/${assetPath}`);
-    return acc + `import asset${index} from './${assetPath}'`;
+    return acc + `import asset${index} from './${assetPath}';\n`;
   }, '');
   const js = checkFile(`${dir}/${name}.js`, content || '');
   return { js, view, name, viewExt };

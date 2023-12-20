@@ -1,10 +1,15 @@
 export default {
-  items: [{ name: 'index' }],
+  items: [
+    { name: 'index', assets: ['sample.png', 'move.gif'] },
+    { name: 'skip' },
+  ],
   options: {
-    urls: Array.from({ length: 149999 }, (_, i) => ({
-      loc: `${i}.html`,
-      lastmod:
-        i < 50000 ? `2023-12-${Math.floor(Math.random() * 31)}` : undefined,
-    })),
+    chunk: {
+      callback: (name) => (name === 'skip' ? null : name + '.html'),
+    },
+    emitted: false,
+    options: {
+      format: true,
+    },
   },
 };

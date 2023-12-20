@@ -74,6 +74,22 @@
       "anyOf": [{ "type": "boolean" }, { "$ref": "#/definitions/Emitted" }],
       "description": "Optional object to customize each url by webpack emitted assets"
     },
+    "chunk": {
+      "type": "object",
+      "description": "Optional object to customize each url by webpack chunk. You can use auxiliary file to make sitemap include image",
+      "required": ["callback"],
+      "properties": {
+        "callback": {
+          "instanceof": "Function",
+          "tsType": "(name: string, hash: string) => SitemapURL | string | undefined | null"
+        },
+        "img": {
+          "type": "boolean",
+          "default": true,
+          "description": "Options for add image sitemap"
+        }
+      }
+    },
     "options": {
       "type": "object",
       "properties": {
