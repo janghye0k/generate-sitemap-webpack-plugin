@@ -7,26 +7,26 @@
 
 [![npm][npm]][npm-url]
 [![node][node]][node-url]
-[![install size](https://packagephobia.com/badge?p=sitemap-generator-webpack-plugin)](https://packagephobia.com/result?p=sitemap-generator-webpack-plugin)
+[![install size](https://packagephobia.com/badge?p=generate-sitemap-webpack-plugin)](https://packagephobia.com/result?p=generate-sitemap-webpack-plugin)
 
-# sitemap-generator-webpack-plugin
+# generate-sitemap-webpack-plugin
 
 Webpack plugin to generate a sitemap.
 
 ## Getting Started
 
-To begin, you'll need to install sitemap-generator-webpack-plugin:
+To begin, you'll need to install generate-sitemap-webpack-plugin:
 
 ```shell
-npm install sitemap-generator-webpack-plugin --save-dev
+npm install generate-sitemap-webpack-plugin --save-dev
 ```
 
 ```shell
-yarn add -D sitemap-generator-webpack-plugin
+yarn add -D generate-sitemap-webpack-plugin
 ```
 
 ```shell
-pnpm add -D sitemap-generator-webpack-plugin
+pnpm add -D generate-sitemap-webpack-plugin
 ```
 
 Then add the plugin to your webpack config. For example:
@@ -34,7 +34,7 @@ Then add the plugin to your webpack config. For example:
 **webpack.config.js**
 
 ```javascript
-const SitemapPlugin = require('sitemap-generator-webpack-plugin');
+const SitemapPlugin = require('generate-sitemap-webpack-plugin');
 
 module.exports = {
   plugins: [new SitemapPlugin({ baseURL: 'https://your.website' })],
@@ -54,7 +54,7 @@ module.exports = {
 
 > **Note**
 >
-> `sitemap-generator-webpack-plugin` is to use files that already exist in the source tree, as part of the build process.
+> `generate-sitemap-webpack-plugin` is to use files that already exist in the source tree, as part of the build process.
 
 > **Note**
 >
@@ -70,16 +70,17 @@ The plugin's signature:
 **webpack.config.js**
 
 ```javascript
-const SitemapPlugin = require('sitemap-generator-webpack-plugin');
+const SitemapPlugin = require('generate-sitemap-webpack-plugin');
 
 module.exports = {
-  plugins: [new SitemapPlugin({ baseURL, urls, emitted, options })],
+  plugins: [new SitemapPlugin({ baseURL, urls, emitted, chunk, options })],
 };
 ```
 
 - **[`baseURL`](#baseURL)**
 - **[`urls`](#urls)**
 - **[`emitted`](#emitted)**
+- **[`chunk`](#chunk)**
 - **[`options`](#options)**
 
 <br/>
@@ -136,7 +137,9 @@ Callback function for use emitted asset filename
 Type:
 
 ```typescript
-type callback = (location: string) => Omit<SitemapURL, 'loc'>;
+type callback = (
+  location: string
+) => Omit<SitemapURL, 'loc'> | undefined | null;
 ```
 
 <small>
@@ -169,6 +172,43 @@ Default: `**/*.html`
 
 <br/>
 
+### `chunk`
+
+Optional object to customize each url by webpack chunk. You can use auxiliary files to make sitemap include image
+
+- **[`callback`](#callback)**
+- **[`img`](#pattern)**
+
+#### `callback`
+
+Callback function for use chunk
+
+Type <small>(Required)</small> :
+
+```typescript
+type callback = (
+  name: string,
+  hash: string
+) => SitemapURL | string | undefined | null;
+```
+
+Default: `N/A`
+
+#### `img`
+
+Options for add image locations
+
+Type: `boolean`
+
+Default: `true`
+
+> Note
+>
+> If you provide `options.chunk.img = true` each url automatically contains auxiliary files which image extension is matched
+> `imageExtList = [apng, avif, gif, jpg, jpeg, jfif, pjpeg, pjp, png, svg, webp, bmp, ico, cur, tif, tiff]`
+
+<br/>
+
 ### `options`
 
 Optional object of configuration settings.
@@ -182,12 +222,12 @@ Optional object of configuration settings.
 | `priority`   | `number`             | `undefined`   | A <priority> to be set globally on all locations. Can be overridden by url-specific priorty config.0.                                               |
 | `changefreq` | `string`             | `undefined`   | A <changefreq> to be set globally on all locations. Can be overridden by url-specific changefreq config.                                            |
 
-[npm]: https://img.shields.io/npm/v/sitemap-generator-webpack-plugin.svg
-[npm-url]: https://www.npmjs.com/package/sitemap-generator-webpack-plugin
-[node]: https://img.shields.io/node/v/sitemap-generator-webpack-plugin.svg
+[npm]: https://img.shields.io/npm/v/generate-sitemap-webpack-plugin.svg
+[npm-url]: https://www.npmjs.com/package/generate-sitemap-webpack-plugin
+[node]: https://img.shields.io/node/v/generate-sitemap-webpack-plugin.svg
 [node-url]: https://nodejs.org
-[size]: https://packagephobia.now.sh/badge?p=sitemap-generator-webpack-plugin
-[size-url]: https://packagephobia.now.sh/result?p=sitemap-generator-webpack-plugin
+[size]: https://packagephobia.now.sh/badge?p=generate-sitemap-webpack-plugin
+[size-url]: https://packagephobia.now.sh/result?p=generate-sitemap-webpack-plugin
 
 ## Examples
 
@@ -198,7 +238,7 @@ Optional object of configuration settings.
 ```javascript
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const SitemapPlugin = require('sitemap-generator-webpack-plugin');
+const SitemapPlugin = require('generate-sitemap-webpack-plugin');
 
 const entries = ['index', 'help', 'ejs'];
 const entry = {};
@@ -310,7 +350,7 @@ module.exports = {
 **webpack.config.js**
 
 ```javascript
-const SitemapPlugin = require('sitemap-generator-webpack-plugin');
+const SitemapPlugin = require('generate-sitemap-webpack-plugin');
 
 module.exports = {
   // Some webpack config
@@ -323,6 +363,9 @@ module.exports = {
         lastmod:
           i < 50000 ? `2023-12-19` : undefined,
       })),
+      options: {
+        format: true
+      }
     }),
   ],
 };
@@ -363,11 +406,78 @@ module.exports = {
 </urlset>
 ```
 
+### 3. Chunk Example
+
+**webpack.config.js**
+
+```javascript
+const SitemapPlugin = require('generate-sitemap-webpack-plugin');
+
+module.exports = {
+  // Some webpack config
+  ...,
+  entry: {
+    index: 'path/to/index.js'
+    skip: 'path/to/skip.js'
+  },
+  module: {
+    rules: [
+      {
+        test: /\.(?:jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$/i,
+        type: 'asset/resource',
+        generator: {
+          filename: 'assets/[name]-[hash][ext]',
+        },
+      },
+    ],
+  },
+  plugins: [
+    new SitemapPlugin({
+      baseURL: 'https://your.website',
+      chunk: {
+        callback: (name) => (name === 'skip' ? null : name + '.html'),
+      },
+      emitted: false,
+      options: {
+        format: true,
+      },
+    }),
+  ],
+};
+```
+
+**index.js**
+
+```javascript
+import Sample from 'path/to/asset/sample.png';
+import Move from 'path/to/asset/move.gif';
+
+... some scripts
+```
+
+**sitemap.xml**
+
+```xml
+<?xml version="1" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://your.website/index.html</loc>
+    <image:image>
+      <image:loc>https://your.website/assets/move-31d6cfe0d16ae931b73c.gif</image:loc>
+    </image:image>
+    <image:image>
+      <image:loc>https://your.website/assets/sample-31d6cfe0d16ae931b73c.png</image:loc>
+    </image:image>
+  </url>
+</urlset>
+
+```
+
 ## License
 
 [MIT](./LICENSE)
 
-[npm]: https://img.shields.io/npm/v/sitemap-generator-webpack-plugin.svg
-[npm-url]: https://npmjs.com/package/sitemap-generator-webpack-plugin
-[node]: https://img.shields.io/node/v/sitemap-generator-webpack-plugin.svg
+[npm]: https://img.shields.io/npm/v/generate-sitemap-webpack-plugin.svg
+[npm-url]: https://npmjs.com/package/generate-sitemap-webpack-plugin
+[node]: https://img.shields.io/node/v/generate-sitemap-webpack-plugin.svg
 [node-url]: https://nodejs.org
