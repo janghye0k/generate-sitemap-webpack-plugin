@@ -194,9 +194,9 @@ class SitemapPlugin {
       (url) => Array.isArray(url['image:image'])
     );
     const data = {
-      ...XML_ATTRS.base,
-      ...(imageURL ? XML_ATTRS.image : {}),
       urlset: {
+        ...XML_ATTRS.base,
+        ...(imageURL ? XML_ATTRS.image : {}),
         url: sitemapURLs,
       },
     };
