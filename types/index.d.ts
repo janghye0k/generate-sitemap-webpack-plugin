@@ -40,6 +40,12 @@ declare class SitemapPlugin {
    */
   private createXMLSitemap;
   /**
+   * @private
+   * @param {Compilation} compilation
+   * @param {SitemapURL} sitemapURL
+   */
+  private validateURL;
+  /**
    * Generate sitemap data ues emittedAssets
    * @private
    * @param {Compilation} compilation
@@ -54,7 +60,7 @@ declare class SitemapPlugin {
   private generateSitemapDataFromURL;
   /**
    * @private
-   * @param {Compilation['chunks']} chunks
+   * @param {Compilation} compilation
    * @returns {SitemapURL[]}
    */
   private generateSitemapDataFromChunks;

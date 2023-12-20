@@ -266,6 +266,27 @@ class SitemapPlugin {
   }
 
   /**
+   * @private
+   * @param {Compilation} compilation
+   * @param {SitemapURL} sitemapURL
+   */
+  validateURL(compilation, sitemapURL) {
+    Object.entries(sitemapURL).forEach(([k, v]) => {
+      const item = URL_VALIDATION_MAP[k];
+      if (!item || v === undefined || item.validate(v)) return;
+      const error = new WebpackError(
+        `Invalid options.emitted.callback\nthis callback's returnValue.${k} should be follow below description\n\n${Object.entries(
+          item.schema
+        )
+          .map(([key, desc]) => `${key}: ${desc}`)
+          .join('\n')}`
+      );
+      compilation.errors.push(error);
+    });
+    return sitemapURL;
+  }
+
+  /**
    * Generate sitemap data ues emittedAssets
    * @private
    * @param {Compilation} compilation
@@ -303,26 +324,8 @@ class SitemapPlugin {
         ...this.commonURLOptions,
         ...result,
       };
-      const sitemapURL = Object.entries({
-        loc,
-        lastmod,
-        changefreq,
-        priority,
-      }).reduce((obj, [k, v]) => {
-        const item = URL_VALIDATION_MAP[k];
-        if (item && v !== undefined && !item.validate(v)) {
-          compilation.errors.push(
-            new WebpackError(
-              `Invalid options.emitted.callback\nthis callback's returnValue.${k} should be follow below description\n\n${Object.entries(
-                item.schema
-              )
-                .map(([key, desc]) => `${key}: ${desc}`)
-                .join('\n')}`
-            )
-          );
-        }
-        return { ...obj, [k]: v };
-      }, /** @type {any} */ ({}));
+      const sitemapURL = { loc, lastmod, changefreq, priority };
+      this.validateURL(compilation, sitemapURL);
       sitemapURLs.push(sitemapURL);
     });
 
@@ -352,10 +355,10 @@ class SitemapPlugin {
 
   /**
    * @private
-   * @param {Compilation['chunks']} chunks
+   * @param {Compilation} compilation
    * @returns {SitemapURL[]}
    */
-  generateSitemapDataFromChunks(chunks) {
+  generateSitemapDataFromChunks(compilation) {
     const { callback, img = true } = this.options.chunk || {};
     const { baseURL } = this.options;
 
@@ -363,7 +366,7 @@ class SitemapPlugin {
     const sitemapURLs = [];
     if (typeof callback !== 'function') return sitemapURLs;
 
-    chunks.forEach((chunk) => {
+    compilation.chunks.forEach((chunk) => {
       const { name, hash, auxiliaryFiles } = chunk;
       if (!name || !hash) return;
       const returnValues = callback(name, hash);
@@ -380,6 +383,7 @@ class SitemapPlugin {
         changefreq,
         priority,
       };
+      this.validateURL(compilation, sitemapURL);
       sitemapURLs.push(sitemapURL);
 
       if (!img) return;
@@ -401,13 +405,13 @@ class SitemapPlugin {
 
   /** @param {Compiler} compiler */
   apply(compiler) {
-    compiler.hooks.afterEmit.tapAsync(PLUGIN, (compilation, callback) => {
-      if (compilation.options.mode !== 'production') return callback();
+    compiler.hooks.afterEmit.tapAsync(PLUGIN, (compilation, done) => {
+      if (compilation.options.mode !== 'production') return done();
 
       const sitemapURLs = [
         ...this.generateSitemapDataFromEmittedAssets(compilation),
         ...this.generateSitemapDataFromURL(),
-        ...this.generateSitemapDataFromChunks(compilation.chunks),
+        ...this.generateSitemapDataFromChunks(compilation),
       ].sort((a, b) => {
         const comapre = (b.priority ?? 0.5) - (a.priority ?? 0.5);
         return comapre;
@@ -417,7 +421,7 @@ class SitemapPlugin {
       const outputPath = compilation.options.output.path;
       this.createXMLSitemap(sitemapURLs, /** @type {any} */ (outputPath));
 
-      callback();
+      done();
     });
   }
 }
