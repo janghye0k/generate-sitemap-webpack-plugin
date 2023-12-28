@@ -6,10 +6,10 @@
   "author": "JangHyeok Kim",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/d0orHyeok/generate-sitemap-webpack-plugin.git"
+    "url": "git+https://github.com/janghye0k/generate-sitemap-webpack-plugin.git"
   },
-  "homepage": "https://github.com/d0orHyeok/generate-sitemap-webpack-plugin",
-  "bugs": "https://github.com/d0orHyeok/generate-sitemap-webpack-plugin",
+  "homepage": "https://github.com/janghye0k/generate-sitemap-webpack-plugin",
+  "bugs": "https://github.com/janghye0k/generate-sitemap-webpack-plugin",
   "main": "dist/index.js",
   "types": "types/index.d.ts",
   "engines": {
